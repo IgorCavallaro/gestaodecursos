@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>Curso Livres · Nova Estação Church</title>
+<meta name="description" content="Controle de presença do Curso Livres — Nova Estação Church" />
+<meta name="theme-color" content="#1E3A5F" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --nec-blue:#2563EB;
+    --nec-navy:#1E3A5F;
+    --nec-navy-open:#1B4F8A;
+    --nec-blue-mid:#1D6FA4;
+    --nec-blue-light:#3B82F6;
+    --nec-white:#FFFFFF;
+    --nec-off-white:#F8FAFC;
+    --nec-gray-border:#E5E7EB;
+    --nec-text-dark:#222222;
+    --nec-text-muted:#6B7280;
+    --nec-blue-fill:#DBEAFE;
+    --nec-blue-tint:#E0E7FF;
+    --nec-blue-subtle:#AABBDD;
+    --nec-red:#DC2626;
+    --nec-red-fill:#FEE2E2;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Inter',sans-serif;
+    background:var(--nec-off-white);
+    color:var(--nec-text-dark);
+    -webkit-font-smoothing:antialiased;
+    overscroll-behavior-y:none;
+  }
+  button{font-family:inherit;}
+  input, select{font-family:inherit;}
+
+  /* ---------- Header ---------- */
+  #app-header{
+    position:sticky; top:0; z-index:40;
+    background:var(--nec-navy);
+    padding-top:calc(14px + var(--safe-top));
+    padding-bottom:14px;
+    overflow:hidden;
+  }
+  #app-header .geo{
+    position:absolute; top:0; right:0; width:140px; height:100%;
+    overflow:hidden; pointer-events:none; opacity:0.9;
+  }
+  #app-header .geo .g1{position:absolute; top:-30px; right:-50px; width:120px; height:200px; background:var(--nec-blue-mid); transform:skewX(-12deg); opacity:.55;}
+  #app-header .geo .g2{position:absolute; top:-10px; right:-10px; width:90px; height:170px; background:var(--nec-blue); transform:skewX(-12deg); opacity:.5;}
+  .header-inner{
+    position:relative; z-index:2;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 16px;
+  }
+  .header-brand{display:flex; align-items:center; gap:10px;}
+  .header-brand h1{
+    font-size:19px; font-weight:800; color:var(--nec-white); margin:0; line-height:1.1;
+  }
+  .header-brand p{
+    font-size:11px; font-weight:600; color:var(--nec-blue-subtle); margin:2px 0 0;
+    letter-spacing:.06em; text-transform:uppercase;
+  }
+  .header-actions{display:flex; align-items:center; gap:10px;}
+  .status-dot{width:9px; height:9px; border-radius:50%; background:#34D399; box-shadow:0 0 0 3px rgba(52,211,153,.25);}
+  .status-dot.offline{background:var(--nec-red); box-shadow:0 0 0 3px rgba(220,38,38,.25);}
+  .icon-btn{
+    width:34px; height:34px; border-radius:10px; border:none;
+    background:rgba(255,255,255,.12); color:var(--nec-white);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .icon-btn:active{background:rgba(255,255,255,.22);}
+
+  /* ---------- Layout ---------- */
+  #main{ padding-bottom:calc(78px + var(--safe-bottom)); min-height:100vh; }
+  .screen{ display:none; padding:16px; max-width:720px; margin:0 auto; }
+  .screen.active{ display:block; }
+
+  .section-title{
+    font-size:20px; font-weight:800; color:var(--nec-navy); margin:0 0 2px;
+  }
+  .section-sub{ font-size:13px; color:var(--nec-text-muted); margin:0 0 14px; }
+  .divider{ width:36px; height:3px; background:var(--nec-blue); border-radius:2px; margin:8px 0 16px; }
+
+  /* ---------- Cards ---------- */
+  .card{
+    background:var(--nec-white); border:1px solid var(--nec-gray-border);
+    border-radius:12px; padding:14px;
+  }
+  .stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .stat-card{
+    background:var(--nec-white); border:1px solid var(--nec-gray-border);
+    border-radius:12px; padding:14px;
+  }
+  .stat-card .num{ font-size:26px; font-weight:800; color:var(--nec-navy); line-height:1; }
+  .stat-card .label{ font-size:11.5px; color:var(--nec-text-muted); margin-top:6px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+  .stat-card.accent{ background:var(--nec-navy); border-color:var(--nec-navy); }
+  .stat-card.accent .num{ color:var(--nec-white); }
+  .stat-card.accent .label{ color:var(--nec-blue-subtle); }
+
+  /* ---------- Week pills ---------- */
+  .week-scroll{
+    display:flex; gap:8px; overflow-x:auto; padding:2px 2px 12px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .week-pill{
+    flex:0 0 auto; min-width:52px; text-align:center;
+    padding:8px 4px; border-radius:10px; border:1px solid var(--nec-gray-border);
+    background:var(--nec-white); cursor:pointer; user-select:none;
+  }
+  .week-pill .n{ font-size:15px; font-weight:800; color:var(--nec-navy); }
+  .week-pill .d{ font-size:9.5px; color:var(--nec-text-muted); margin-top:1px; }
+  .week-pill.active{ background:var(--nec-blue); border-color:var(--nec-blue); }
+  .week-pill.active .n, .week-pill.active .d{ color:var(--nec-white); }
+
+  /* ---------- Search ---------- */
+  .search-box{
+    display:flex; align-items:center; gap:8px;
+    background:var(--nec-white); border:1px solid var(--nec-gray-border);
+    border-radius:10px; padding:9px 12px; margin-bottom:14px;
+  }
+  .search-box input{ border:none; outline:none; flex:1; font-size:14px; background:transparent; color:var(--nec-text-dark); }
+  .search-box svg{ flex:0 0 auto; }
+
+  /* ---------- Chamada list ---------- */
+  .roll-summary{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--nec-blue-fill); border-radius:10px; padding:10px 14px; margin-bottom:14px;
+  }
+  .roll-summary b{ color:var(--nec-navy); font-size:14px; }
+  .roll-summary span{ font-size:12px; color:var(--nec-blue-mid); font-weight:600; }
+
+  .aluno-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 0; border-bottom:1px solid var(--nec-gray-border);
+  }
+  .aluno-row:last-child{ border-bottom:none; }
+  .aluno-info{ min-width:0; }
+  .aluno-info .nm{ font-size:14.5px; font-weight:600; color:var(--nec-text-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .aluno-info .meta{ font-size:11.5px; color:var(--nec-text-muted); margin-top:1px; }
+  .toggle-group{ display:flex; flex:0 0 auto; border-radius:10px; overflow:hidden; border:1px solid var(--nec-gray-border); }
+  .toggle-btn{
+    border:none; padding:8px 12px; font-size:12.5px; font-weight:700; cursor:pointer;
+    background:var(--nec-off-white); color:var(--nec-text-muted);
+  }
+  .toggle-btn.presente.on{ background:var(--nec-blue); color:var(--nec-white); }
+  .toggle-btn.falta.on{ background:var(--nec-red); color:var(--nec-white); }
+
+  /* ---------- Grid matrix (Painel) ---------- */
+  .matrix-wrap{ overflow-x:auto; border:1px solid var(--nec-gray-border); border-radius:12px; -webkit-overflow-scrolling:touch; }
+  table.matrix{ border-collapse:collapse; width:100%; min-width:680px; }
+  table.matrix th, table.matrix td{ padding:6px 5px; text-align:center; font-size:11px; }
+  table.matrix thead th{ background:var(--nec-navy); color:var(--nec-white); font-weight:700; position:sticky; top:0; }
+  table.matrix td.name-cell, table.matrix th.name-cell{
+    text-align:left; position:sticky; left:0; background:var(--nec-white); z-index:1;
+    font-weight:600; padding-left:10px; white-space:nowrap; border-right:1px solid var(--nec-gray-border);
+    max-width:140px; overflow:hidden; text-overflow:ellipsis;
+  }
+  table.matrix thead th.name-cell{ background:var(--nec-navy); color:var(--nec-white); }
+  table.matrix tbody tr:nth-child(even) td{ background:var(--nec-off-white); }
+  table.matrix tbody tr:nth-child(even) td.name-cell{ background:#F1F5F9; }
+  .dot{ display:inline-block; width:16px; height:16px; border-radius:50%; }
+  .dot.on{ background:var(--nec-blue); }
+  .dot.off{ background:var(--nec-gray-border); }
+
+  /* ---------- Bar chart ---------- */
+  .chart-bars{ display:flex; align-items:flex-end; gap:4px; height:110px; padding-top:8px; }
+  .bar-col{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
+  .bar{ width:100%; max-width:16px; border-radius:4px 4px 0 0; background:var(--nec-blue); min-height:2px; }
+  .bar-label{ font-size:8.5px; color:var(--nec-text-muted); margin-top:4px; }
+
+  /* ---------- Ranking ---------- */
+  .rank-row{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--nec-gray-border); }
+  .rank-row:last-child{ border-bottom:none; }
+  .rank-row .bar-track{ flex:1; height:7px; border-radius:4px; background:var(--nec-gray-border); overflow:hidden; }
+  .rank-row .bar-fill{ height:100%; background:var(--nec-blue); }
+  .rank-row.low .bar-fill{ background:var(--nec-red); }
+  .rank-row .pct{ font-size:12.5px; font-weight:700; color:var(--nec-navy); width:38px; text-align:right; }
+  .rank-row .rnm{ font-size:13px; color:var(--nec-text-dark); width:120px; flex:0 0 auto; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .card-title{ font-size:14px; font-weight:700; color:var(--nec-navy); margin:0 0 10px; }
+  .mb16{ margin-bottom:16px; }
+
+  /* ---------- Alunos tab ---------- */
+  .aluno-card{
+    background:var(--nec-white); border:1px solid var(--nec-gray-border); border-radius:12px;
+    padding:12px 14px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .aluno-card.inativo{ opacity:.5; }
+  .aluno-card .nm{ font-size:14.5px; font-weight:700; color:var(--nec-text-dark); }
+  .aluno-card .meta{ font-size:11.5px; color:var(--nec-text-muted); margin-top:2px; }
+  .badge-pct{ font-size:12px; font-weight:800; padding:4px 9px; border-radius:20px; background:var(--nec-blue-fill); color:var(--nec-blue-mid); }
+  .aluno-actions{ display:flex; align-items:center; gap:8px; }
+  .link-btn{ border:none; background:none; color:var(--nec-text-muted); font-size:11px; text-decoration:underline; cursor:pointer; padding:4px; }
+
+  .fab{
+    position:fixed; right:18px; bottom:calc(88px + var(--safe-bottom)); z-index:30;
+    width:52px; height:52px; border-radius:50%; background:var(--nec-blue); color:#fff;
+    border:none; box-shadow:0 6px 16px rgba(37,99,235,.4); display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+
+  /* ---------- Save bar (Chamada) ---------- */
+  .save-bar{
+    position:fixed; left:0; right:0; bottom:calc(62px + var(--safe-bottom)); z-index:35;
+    background:var(--nec-navy); color:#fff;
+    display:none; align-items:center; justify-content:space-between; gap:10px;
+    padding:11px 16px; box-shadow:0 -4px 14px rgba(0,0,0,.12);
+  }
+  .save-bar.show{ display:flex; }
+  .save-bar span{ font-size:12.5px; font-weight:600; color:var(--nec-blue-subtle); }
+  .save-bar-actions{ display:flex; gap:8px; flex:0 0 auto; }
+  .save-bar-btn{ border:none; border-radius:8px; padding:9px 14px; font-size:12.5px; font-weight:700; cursor:pointer; }
+  .save-bar-btn.discard{ background:rgba(255,255,255,.12); color:#fff; }
+  .save-bar-btn.save{ background:var(--nec-blue); color:#fff; }
+
+  /* ---------- Bottom nav ---------- */
+  #bottom-nav{
+    position:fixed; bottom:0; left:0; right:0; z-index:40;
+    background:var(--nec-white); border-top:1px solid var(--nec-gray-border);
+    display:flex; padding-bottom:var(--safe-bottom);
+  }
+  .nav-btn{
+    flex:1; border:none; background:none; padding:10px 4px 8px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--nec-text-muted);
+  }
+  .nav-btn.active{ color:var(--nec-blue); }
+  .nav-btn span{ font-size:10.5px; font-weight:700; }
+
+  /* ---------- Setup screen ---------- */
+  #setup-screen{
+    display:none; min-height:100vh; align-items:center; justify-content:center;
+    padding:24px; background:var(--nec-off-white);
+  }
+  #setup-screen.active{ display:flex; }
+  .setup-card{ max-width:420px; width:100%; background:var(--nec-white); border:1px solid var(--nec-gray-border); border-radius:16px; padding:28px 24px; }
+  .setup-logo{ display:flex; justify-content:center; margin-bottom:14px; }
+  .setup-card h2{ text-align:center; color:var(--nec-navy); font-size:19px; margin:0 0 4px; }
+  .setup-card p.desc{ text-align:center; color:var(--nec-text-muted); font-size:13px; margin:0 0 20px; }
+  .field-label{ font-size:12px; font-weight:700; color:var(--nec-text-muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px; display:block; }
+  .field-input{
+    width:100%; padding:11px 12px; border:1px solid var(--nec-gray-border); border-radius:10px;
+    font-size:13.5px; margin-bottom:14px; color:var(--nec-text-dark);
+  }
+  .btn-primary{
+    width:100%; padding:13px; border:none; border-radius:10px; background:var(--nec-blue); color:#fff;
+    font-weight:700; font-size:14.5px; cursor:pointer;
+  }
+  .btn-primary:active{ background:var(--nec-blue-mid); }
+  .btn-secondary{
+    width:100%; padding:11px; border:1px solid var(--nec-gray-border); border-radius:10px; background:var(--nec-white);
+    color:var(--nec-navy); font-weight:700; font-size:13.5px; cursor:pointer; margin-top:8px;
+  }
+  .setup-help{ font-size:11.5px; color:var(--nec-text-muted); margin-top:16px; line-height:1.5; }
+  .setup-help a{ color:var(--nec-blue); }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(30,58,95,.5); z-index:60;
+    display:none; align-items:flex-end; justify-content:center;
+  }
+  .modal-overlay.active{ display:flex; }
+  .modal-sheet{
+    background:var(--nec-white); width:100%; max-width:480px; border-radius:18px 18px 0 0;
+    padding:20px 20px calc(20px + var(--safe-bottom)); max-height:85vh; overflow-y:auto;
+  }
+  .modal-title{ font-size:17px; font-weight:800; color:var(--nec-navy); margin:0 0 14px; }
+
+  /* ---------- Toast ---------- */
+  #toast{
+    position:fixed; left:50%; top:calc(10px + var(--safe-top)); transform:translateX(-50%) translateY(-140%);
+    background:var(--nec-navy); color:#fff; padding:10px 18px; border-radius:20px; font-size:13px;
+    z-index:80; transition:transform .25s ease; box-shadow:0 6px 16px rgba(0,0,0,.2);
+  }
+  #toast.show{ transform:translateX(-50%) translateY(0); }
+
+  .empty-state{ text-align:center; padding:40px 20px; color:var(--nec-text-muted); }
+  .footer-note{ text-align:center; font-size:11px; color:var(--nec-text-muted); padding:18px 0 6px; }
+
+  /* ---------- Meus Cursos ---------- */
+  #screen-cursos{ padding-bottom:calc(78px + var(--safe-bottom)); }
+  .cursos-tabs{ display:flex; gap:8px; margin-bottom:14px; }
+  .cursos-tab-btn{
+    flex:1; padding:9px; border-radius:9px; border:1px solid var(--nec-gray-border);
+    background:var(--nec-white); color:var(--nec-text-muted); font-weight:700; font-size:13px; cursor:pointer;
+  }
+  .cursos-tab-btn.active{ background:var(--nec-navy); color:#fff; border-color:var(--nec-navy); }
+  .curso-card{
+    background:var(--nec-white); border:1px solid var(--nec-gray-border); border-radius:14px;
+    padding:16px; margin-bottom:12px; cursor:pointer; position:relative;
+  }
+  .curso-card:active{ background:var(--nec-off-white); }
+  .curso-card .top-row{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .curso-card .nome{ font-size:16px; font-weight:800; color:var(--nec-navy); margin:0; }
+  .curso-card .badge{
+    font-size:10.5px; font-weight:800; padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.03em;
+    flex:0 0 auto; white-space:nowrap;
+  }
+  .curso-card .badge.ativo{ background:#DCFCE7; color:#15803D; }
+  .curso-card .badge.encerrado{ background:var(--nec-gray-border); color:var(--nec-text-muted); }
+  .curso-card .meta-row{ display:flex; gap:16px; margin-top:10px; }
+  .curso-card .meta-item .n{ font-size:15px; font-weight:800; color:var(--nec-navy); }
+  .curso-card .meta-item .l{ font-size:10.5px; color:var(--nec-text-muted); text-transform:uppercase; letter-spacing:.03em; }
+  .curso-card .curso-actions{ margin-top:12px; display:flex; gap:8px; }
+  .curso-mini-btn{
+    border:1px solid var(--nec-gray-border); background:var(--nec-white); color:var(--nec-navy);
+    font-size:11.5px; font-weight:700; padding:7px 11px; border-radius:8px; cursor:pointer;
+  }
+  .curso-mini-btn.danger{ color:var(--nec-red); }
+  .cursos-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+  .cursos-fab{
+    position:fixed; right:18px; bottom:calc(24px + var(--safe-bottom)); z-index:30;
+    width:56px; height:56px; border-radius:50%; background:var(--nec-blue); color:#fff;
+    border:none; box-shadow:0 6px 16px rgba(37,99,235,.4); display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .back-btn{
+    width:34px; height:34px; border-radius:10px; border:none; background:rgba(255,255,255,.12); color:#fff;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; margin-right:2px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ MEUS CURSOS ============ -->
+<div class="screen active" id="screen-cursos" style="padding:16px; max-width:720px; margin:0 auto;">
+  <div class="cursos-header">
+    <div>
+      <h2 class="section-title">Meus Cursos</h2>
+      <p class="section-sub">Nova Estação Church</p>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="cursos-tabs">
+    <button class="cursos-tab-btn active" data-status="Ativo">Ativos</button>
+    <button class="cursos-tab-btn" data-status="Encerrado">Histórico</button>
+  </div>
+
+  <div id="lista-cursos"></div>
+
+  <button class="cursos-fab" id="btn-novo-curso">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  </button>
+</div>
+
+<!-- ============ SETUP SCREEN ============ -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-logo">
+      <svg viewBox="0 0 100 120" width="56" height="67">
+        <path d="M50 5 C50 5, 10 35, 10 72 C10 95, 28 115, 50 115 C72 115, 90 95, 90 72 C90 35, 50 5, 50 5Z" fill="#2563EB" stroke="#1E3A5F" stroke-width="3"/>
+        <line x1="50" y1="10" x2="50" y2="110" stroke="#FFFFFF" stroke-width="3.5"/>
+        <line x1="50" y1="90" x2="22" y2="72" stroke="#FFFFFF" stroke-width="2.8"/>
+        <line x1="50" y1="90" x2="78" y2="72" stroke="#FFFFFF" stroke-width="2.8"/>
+        <line x1="50" y1="72" x2="18" y2="54" stroke="#FFFFFF" stroke-width="2.8"/>
+        <line x1="50" y1="72" x2="82" y2="54" stroke="#FFFFFF" stroke-width="2.8"/>
+        <line x1="50" y1="54" x2="22" y2="38" stroke="#FFFFFF" stroke-width="2.8"/>
+        <line x1="50" y1="54" x2="78" y2="38" stroke="#FFFFFF" stroke-width="2.8"/>
+        <line x1="50" y1="36" x2="32" y2="24" stroke="#FFFFFF" stroke-width="2.5"/>
+        <line x1="50" y1="36" x2="68" y2="24" stroke="#FFFFFF" stroke-width="2.5"/>
+      </svg>
+    </div>
+    <h2>Curso Livres</h2>
+    <p class="desc">Nova Estação Church — configure a conexão com sua planilha antes de começar.</p>
+    <label class="field-label">URL do Apps Script (/exec)</label>
+    <input type="url" id="input-api-url" class="field-input" placeholder="https://script.google.com/macros/s/.../exec" />
+    <button class="btn-primary" id="btn-save-api">Conectar</button>
+    <p class="setup-help">
+      Não tem a URL ainda? Abra o Google Sheets criado para o curso, vá em <b>Extensões → Apps Script</b>,
+      cole o código <b>Code.gs</b> fornecido, rode <b>setupSheets</b> uma vez e implante como
+      <b>Aplicativo da Web</b> (acesso: qualquer pessoa). Cole a URL gerada aqui.
+    </p>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" style="display:none;">
+  <header id="app-header">
+    <div class="geo"><div class="g1"></div><div class="g2"></div></div>
+    <div class="header-inner">
+      <div class="header-brand">
+        <button class="back-btn" id="btn-voltar-cursos" title="Meus Cursos">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+        </button>
+        <svg viewBox="0 0 100 120" width="26" height="31">
+          <path d="M50 5 C50 5, 10 35, 10 72 C10 95, 28 115, 50 115 C72 115, 90 95, 90 72 C90 35, 50 5, 50 5Z" fill="#FFFFFF"/>
+          <line x1="50" y1="10" x2="50" y2="110" stroke="#1E3A5F" stroke-width="3.5"/>
+          <line x1="50" y1="90" x2="22" y2="72" stroke="#1E3A5F" stroke-width="2.8"/>
+          <line x1="50" y1="90" x2="78" y2="72" stroke="#1E3A5F" stroke-width="2.8"/>
+          <line x1="50" y1="72" x2="18" y2="54" stroke="#1E3A5F" stroke-width="2.8"/>
+          <line x1="50" y1="72" x2="82" y2="54" stroke="#1E3A5F" stroke-width="2.8"/>
+          <line x1="50" y1="54" x2="22" y2="38" stroke="#1E3A5F" stroke-width="2.8"/>
+          <line x1="50" y1="54" x2="78" y2="38" stroke="#1E3A5F" stroke-width="2.8"/>
+          <line x1="50" y1="36" x2="32" y2="24" stroke="#1E3A5F" stroke-width="2.5"/>
+          <line x1="50" y1="36" x2="68" y2="24" stroke="#1E3A5F" stroke-width="2.5"/>
+        </svg>
+        <div>
+          <h1 id="header-curso-nome">Curso</h1>
+          <p>Nova Estação Church</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="status-dot" id="status-dot" title="Conectado"></div>
+        <button class="icon-btn" id="btn-settings" title="Configurações">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ---------- CHAMADA ---------- -->
+    <section class="screen active" id="screen-chamada">
+      <h2 class="section-title">Chamada</h2>
+      <p class="section-sub">Marque a presença dos alunos no encontro selecionado.</p>
+      <div class="divider"></div>
+
+      <div class="week-scroll" id="week-scroll"></div>
+
+      <div class="roll-summary">
+        <b id="roll-summary-text">—</b>
+        <span id="roll-summary-pct">0%</span>
+      </div>
+
+      <div class="search-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-chamada" placeholder="Buscar aluno..." />
+      </div>
+
+      <div class="card" id="lista-chamada"></div>
+    </section>
+
+    <div class="save-bar" id="save-bar">
+      <span id="save-bar-text">3 alterações não salvas</span>
+      <div class="save-bar-actions">
+        <button class="save-bar-btn discard" id="btn-discard">Descartar</button>
+        <button class="save-bar-btn save" id="btn-save-encontro">Salvar encontro</button>
+      </div>
+    </div>
+
+    <!-- ---------- PAINEL ---------- -->
+    <section class="screen" id="screen-painel">
+      <h2 class="section-title">Painel</h2>
+      <p class="section-sub">Visão geral de frequência do Curso Livres.</p>
+      <div class="divider"></div>
+
+      <div class="stat-grid" id="stat-grid"></div>
+
+      <div class="card mb16">
+        <p class="card-title">Presença por encontro</p>
+        <div class="chart-bars" id="chart-bars"></div>
+      </div>
+
+      <div class="card mb16">
+        <p class="card-title">Frequência por aluno — atenção</p>
+        <div id="rank-low"></div>
+      </div>
+
+      <div class="card mb16">
+        <p class="card-title">Mapa de presença (16 semanas)</p>
+        <div class="matrix-wrap"><table class="matrix" id="matrix-table"></table></div>
+      </div>
+    </section>
+
+    <!-- ---------- ALUNOS ---------- -->
+    <section class="screen" id="screen-alunos">
+      <h2 class="section-title">Alunos</h2>
+      <p class="section-sub" id="alunos-sub">Lista de inscritos no curso.</p>
+      <div class="divider"></div>
+
+      <button class="btn-secondary" id="btn-abrir-import" style="margin:0 0 14px;">
+        📄 Importar planilha de inscrições
+      </button>
+
+      <div class="search-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-alunos" placeholder="Buscar por nome, e-mail ou celular..." />
+      </div>
+
+      <div id="lista-alunos"></div>
+      <p class="footer-note">© 2026 · Nova Estação Church</p>
+    </section>
+  </main>
+
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-tab="chamada">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+      <span>Chamada</span>
+    </button>
+    <button class="nav-btn" data-tab="painel">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+      <span>Painel</span>
+    </button>
+    <button class="nav-btn" data-tab="alunos">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      <span>Alunos</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ---------- MODAL: SETTINGS ---------- -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal-sheet">
+    <h3 class="modal-title">Configurações</h3>
+    <label class="field-label">URL do Apps Script</label>
+    <input type="url" id="settings-api-url" class="field-input" placeholder="https://script.google.com/macros/s/.../exec" />
+    <button class="btn-primary" id="btn-settings-save">Salvar</button>
+    <button class="btn-secondary" id="btn-refresh-data">Sincronizar agora</button>
+    <button class="btn-secondary" id="btn-close-settings">Fechar</button>
+  </div>
+</div>
+
+<!-- ---------- MODAL: ADD ALUNO ---------- -->
+<div class="modal-overlay" id="modal-add-aluno">
+  <div class="modal-sheet">
+    <h3 class="modal-title">Adicionar aluno</h3>
+    <label class="field-label">Nome completo</label>
+    <input type="text" id="new-aluno-nome" class="field-input" placeholder="Nome do aluno" />
+    <label class="field-label">E-mail (opcional)</label>
+    <input type="email" id="new-aluno-email" class="field-input" placeholder="email@exemplo.com" />
+    <label class="field-label">Celular (opcional)</label>
+    <input type="tel" id="new-aluno-celular" class="field-input" placeholder="(19) 99999-9999" />
+    <button class="btn-primary" id="btn-add-aluno-save">Adicionar</button>
+    <button class="btn-secondary" id="btn-close-add-aluno">Cancelar</button>
+  </div>
+</div>
+
+<!-- ---------- MODAL: NOVO CURSO ---------- -->
+<div class="modal-overlay" id="modal-novo-curso">
+  <div class="modal-sheet">
+    <h3 class="modal-title">Novo curso</h3>
+    <label class="field-label">Nome do curso</label>
+    <input type="text" id="new-curso-nome" class="field-input" placeholder="Ex: Curso Restaura" />
+    <label class="field-label">Duração (semanas)</label>
+    <input type="number" id="new-curso-semanas" class="field-input" placeholder="16" min="1" max="52" value="16" />
+    <label class="field-label">Data de início (opcional)</label>
+    <input type="date" id="new-curso-data" class="field-input" />
+    <button class="btn-primary" id="btn-novo-curso-save">Criar curso</button>
+    <button class="btn-secondary" id="btn-close-novo-curso">Cancelar</button>
+  </div>
+</div>
+
+<!-- ---------- MODAL: IMPORTAR PLANILHA ---------- -->
+<div class="modal-overlay" id="modal-import-alunos">
+  <div class="modal-sheet">
+    <h3 class="modal-title">Importar planilha de inscrições</h3>
+    <p style="font-size:12.5px; color:var(--nec-text-muted); margin:-8px 0 14px;">
+      Aceita .xlsx ou .csv. O app procura automaticamente colunas de nome, e-mail e celular.
+    </p>
+    <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv" class="field-input" style="padding:9px;" />
+
+    <div id="import-preview" style="display:none; margin-top:14px;">
+      <div class="roll-summary" style="margin-bottom:10px;">
+        <b id="import-preview-count">—</b>
+        <span id="import-preview-ignorados"></span>
+      </div>
+      <div class="card" id="import-preview-list" style="max-height:220px; overflow-y:auto;"></div>
+    </div>
+
+    <button class="btn-primary" id="btn-import-confirm" style="margin-top:16px; display:none;">Confirmar importação</button>
+    <button class="btn-secondary" id="btn-close-import">Cancelar</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ==========================================================
+   CURSO LIVRES — App logic
+   ========================================================== */
+const LS_API_URL = 'livres_api_url';
+const LS_QUEUE = 'livres_pending_queue';
+
+// URL padrão do Apps Script — já embutida, então o app conecta sozinho
+// em qualquer celular, sem precisar colar a URL manualmente.
+// Para trocar a planilha, edite esta linha e reimplante os arquivos no GitHub.
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbwGAtL61PR4sV2gi2ohNsUP9lmborEO4hd_zvkIFrwpF95hYWZ1hOlnHuhcUw8nERI/exec';
+
+let API_URL = localStorage.getItem(LS_API_URL) || DEFAULT_API_URL;
+let state = { alunos: [], presencas: {}, semanas: [], totalSemanas: 16 };
+let semanaAtiva = 1;
+let isOnline = true;
+
+// ---------- cursos (multi-curso) ----------
+let cursos = [];
+let cursoAtivo = null;      // { id, nome, totalSemanas, status, ... }
+let filtroStatusCursos = 'Ativo';
+
+// ---------- rascunho da chamada (não afeta o Painel até salvar) ----------
+let draft = {};        // { alunoId: true/false } — valores em edição para semanaAtiva
+let draftDirty = false;
+
+function loadDraftForWeek(s){
+  draft = {};
+  state.alunos.forEach(a=>{
+    draft[a.id] = !!(state.presencas[a.id] && state.presencas[a.id][s]);
+  });
+  draftDirty = false;
+}
+
+// ---------- utilidades ----------
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(()=> el.classList.remove('show'), 2200);
+}
+
+function setStatus(online){
+  isOnline = online;
+  const dot = document.getElementById('status-dot');
+  dot.classList.toggle('offline', !online);
+  dot.title = online ? 'Conectado' : 'Sem conexão — alterações serão sincronizadas depois';
+}
+
+function pctPresenca(alunoId){
+  const p = state.presencas[alunoId];
+  if (!p) return 0;
+  let count = 0;
+  for (let s = 1; s <= state.totalSemanas; s++) if (p[s]) count++;
+  return Math.round((count / state.totalSemanas) * 100);
+}
+
+function iniciais(nome){
+  return nome.split(' ').filter(Boolean).slice(0,2).map(n=>n[0]).join('').toUpperCase();
+}
+
+// ---------- gestão de cursos ----------
+function renderCursosScreen(){
+  const container = document.getElementById('lista-cursos');
+  container.innerHTML = '';
+  const filtrados = cursos.filter(c => (c.status || 'Ativo') === filtroStatusCursos)
+                           .sort((a,b)=> (b.dataCriacao||'').localeCompare(a.dataCriacao||''));
+
+  if (!filtrados.length){
+    container.innerHTML = `<div class="empty-state">${filtroStatusCursos === 'Ativo' ? 'Nenhum curso ativo ainda. Toque em + para criar o primeiro.' : 'Nenhum curso no histórico ainda.'}</div>`;
+    return;
+  }
+
+  filtrados.forEach(c=>{
+    const card = document.createElement('div');
+    card.className = 'curso-card';
+    const ativo = c.status !== 'Encerrado';
+    card.innerHTML = `
+      <div class="top-row">
+        <p class="nome">${c.nome}</p>
+        <span class="badge ${ativo ? 'ativo' : 'encerrado'}">${ativo ? 'Ativo' : 'Encerrado'}</span>
+      </div>
+      <div class="meta-row">
+        <div class="meta-item"><div class="n">${c.totalAlunos}</div><div class="l">Alunos</div></div>
+        <div class="meta-item"><div class="n">${c.totalSemanas}</div><div class="l">Semanas</div></div>
+        ${c.dataInicio ? `<div class="meta-item"><div class="n">${c.dataInicio.slice(5)}</div><div class="l">Início</div></div>` : ''}
+      </div>
+      <div class="curso-actions">
+        ${ativo
+          ? `<button class="curso-mini-btn danger" data-action="encerrar" data-id="${c.id}">Encerrar curso</button>`
+          : `<button class="curso-mini-btn" data-action="reabrir" data-id="${c.id}">Reabrir curso</button>`
+        }
+      </div>`;
+    card.addEventListener('click', (ev)=>{
+      if (ev.target.closest('.curso-mini-btn')) return;
+      abrirCurso(c);
+    });
+    container.appendChild(card);
+  });
+
+  container.querySelectorAll('.curso-mini-btn').forEach(btn=>{
+    btn.onclick = async (ev) => {
+      ev.stopPropagation();
+      const id = btn.dataset.id;
+      const nomeCurso = (cursos.find(c=>c.id===id) || {}).nome || id;
+      if (btn.dataset.action === 'encerrar'){
+        const ok = window.confirm(`Encerrar "${nomeCurso}"? Ele vai para o Histórico (os dados continuam salvos).`);
+        if (!ok) return;
+        toast('Encerrando curso...');
+        const r = await sendAction({ action:'encerrarCurso', cursoId:id });
+        if (r.ok){ cursos = r.data.cursos; renderCursosScreen(); toast('Curso encerrado ✓'); }
+        else toast('Sem conexão — tente novamente.');
+      } else {
+        toast('Reabrindo curso...');
+        const r = await sendAction({ action:'reabrirCurso', cursoId:id });
+        if (r.ok){ cursos = r.data.cursos; renderCursosScreen(); toast('Curso reaberto ✓'); }
+        else toast('Sem conexão — tente novamente.');
+      }
+    };
+  });
+}
+
+document.querySelectorAll('.cursos-tab-btn').forEach(btn=>{
+  btn.onclick = () => {
+    document.querySelectorAll('.cursos-tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    filtroStatusCursos = btn.dataset.status;
+    renderCursosScreen();
+  };
+});
+
+function abrirCurso(curso, opts){
+  opts = opts || {};
+  cursoAtivo = curso;
+  semanaAtiva = 1;
+  draft = {}; draftDirty = false;
+  document.getElementById('screen-cursos').classList.remove('active');
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('header-curso-nome').textContent = curso.nome;
+  document.getElementById('alunos-sub').textContent = `Lista de inscritos em "${curso.nome}".`;
+  document.getElementById('bottom-nav').style.display = 'flex';
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const tabInicial = opts.tab || 'chamada';
+  document.querySelector(`.nav-btn[data-tab="${tabInicial}"]`).classList.add('active');
+  document.getElementById('screen-' + tabInicial).classList.add('active');
+  toggleFab();
+  fetchData().then(()=>{ if (opts.abrirImport) document.getElementById('btn-abrir-import').click(); });
+}
+
+function voltarParaCursos(){
+  cursoAtivo = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('screen-cursos').classList.add('active');
+  fetchCursos();
+}
+
+document.getElementById('btn-voltar-cursos').onclick = voltarParaCursos;
+
+document.getElementById('btn-novo-curso').onclick = () => {
+  document.getElementById('new-curso-nome').value = '';
+  document.getElementById('new-curso-semanas').value = 16;
+  document.getElementById('new-curso-data').value = '';
+  document.getElementById('modal-novo-curso').classList.add('active');
+};
+document.getElementById('btn-close-novo-curso').onclick = () => document.getElementById('modal-novo-curso').classList.remove('active');
+document.getElementById('btn-novo-curso-save').onclick = async () => {
+  const nome = document.getElementById('new-curso-nome').value.trim();
+  const totalSemanas = Number(document.getElementById('new-curso-semanas').value) || 16;
+  const dataInicio = document.getElementById('new-curso-data').value;
+  if (!nome){ toast('Informe o nome do curso.'); return; }
+  document.getElementById('modal-novo-curso').classList.remove('active');
+  toast('Criando curso...');
+  const r = await sendAction({ action:'criarCurso', nome, totalSemanas, dataInicio });
+  if (r.ok){
+    cursos = r.data.cursos;
+    toast('Curso criado ✓');
+    const novoCurso = cursos.find(c => c.id === r.data.novoCursoId);
+    if (novoCurso){
+      abrirCurso(novoCurso, { tab:'alunos', abrirImport:true });
+    } else {
+      renderCursosScreen();
+    }
+  } else {
+    toast('Sem conexão — tente novamente quando estiver online.');
+  }
+};
+
+// ---------- fila offline ----------
+function getQueue(){ try { return JSON.parse(localStorage.getItem(LS_QUEUE) || '[]'); } catch(e){ return []; } }
+function saveQueue(q){ localStorage.setItem(LS_QUEUE, JSON.stringify(q)); }
+
+async function sendAction(action){
+  if (!API_URL) return { ok:false };
+  if (cursoAtivo && !action.cursoId && action.action !== 'criarCurso') action.cursoId = cursoAtivo.id;
+  try {
+    const res = await fetch(API_URL, {
+      method:'POST',
+      headers: { 'Content-Type':'text/plain;charset=utf-8' }, // evita preflight CORS no Apps Script
+      body: JSON.stringify(action)
+    });
+    const data = await res.json();
+    setStatus(true);
+    return { ok:true, data };
+  } catch(err){
+    setStatus(false);
+    return { ok:false };
+  }
+}
+
+async function flushQueue(){
+  let q = getQueue();
+  if (!q.length || !API_URL) return;
+  const remaining = [];
+  for (const action of q){
+    const r = await sendAction(action);
+    if (!r.ok) remaining.push(action);
+  }
+  saveQueue(remaining);
+  if (remaining.length === 0) toast('Sincronizado com a planilha ✓');
+}
+
+function queueAction(action){
+  const q = getQueue();
+  q.push(action);
+  saveQueue(q);
+}
+
+// ---------- fetch de cursos e de dados de um curso ----------
+async function fetchCursos(){
+  if (!API_URL) return;
+  try {
+    const res = await fetch(API_URL + '?action=cursos');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    cursos = data.cursos || [];
+    setStatus(true);
+    renderCursosScreen();
+  } catch(err){
+    setStatus(false);
+    toast('Não foi possível carregar a lista de cursos.');
+  }
+}
+
+async function fetchData(){
+  if (!API_URL || !cursoAtivo) return;
+  try {
+    const res = await fetch(API_URL + '?action=data&cursoId=' + encodeURIComponent(cursoAtivo.id));
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    state = data;
+    setStatus(true);
+    if (!draftDirty) loadDraftForWeek(semanaAtiva);
+    renderAll();
+  } catch(err){
+    setStatus(false);
+    toast('Não foi possível carregar dados. Verifique a conexão.');
+  }
+}
+
+// ---------- render ----------
+function renderAll(){
+  renderWeekScroll();
+  renderChamada();
+  renderPainel();
+  renderAlunos();
+}
+
+function renderWeekScroll(){
+  const wrap = document.getElementById('week-scroll');
+  wrap.innerHTML = '';
+  for (let s = 1; s <= state.totalSemanas; s++){
+    const info = (state.semanas || []).find(x => Number(x.numero) === s);
+    const pill = document.createElement('div');
+    pill.className = 'week-pill' + (s === semanaAtiva ? ' active' : '');
+    pill.innerHTML = `<div class="n">S${s}</div><div class="d">${info && info.data ? info.data.slice(5) : '—'}</div>`;
+    pill.onclick = () => trocarSemana(s);
+    wrap.appendChild(pill);
+  }
+  // rola até a semana ativa
+  requestAnimationFrame(()=>{
+    const active = wrap.querySelector('.active');
+    if (active) active.scrollIntoView({ inline:'center', behavior:'smooth' });
+  });
+}
+
+function trocarSemana(s){
+  if (s === semanaAtiva) return;
+  if (draftDirty){
+    const ok = window.confirm(`Você tem alterações não salvas na Semana ${semanaAtiva}.\nDescartar e trocar de semana?`);
+    if (!ok) return; // permanece na semana atual para dar tempo de salvar
+  }
+  semanaAtiva = s;
+  loadDraftForWeek(s);
+  renderWeekScroll();
+  renderChamada();
+}
+
+function alunosAtivosFiltrados(termo){
+  const t = (termo||'').toLowerCase().trim();
+  return state.alunos.filter(a => a.ativo !== false).filter(a=>{
+    if (!t) return true;
+    return (a.nome||'').toLowerCase().includes(t) ||
+           (a.email||'').toLowerCase().includes(t) ||
+           (a.celular||'').toLowerCase().includes(t);
+  }).sort((a,b)=> a.nome.localeCompare(b.nome));
+}
+
+function renderChamada(){
+  const termo = document.getElementById('search-chamada').value;
+  const lista = alunosAtivosFiltrados(termo);
+  const container = document.getElementById('lista-chamada');
+  container.innerHTML = '';
+
+  let presentes = 0;
+  const totalAtivos = state.alunos.filter(a=>a.ativo!==false).length;
+
+  lista.forEach(a=>{
+    const marcado = !!draft[a.id];
+    if (marcado) presentes++;
+
+    const row = document.createElement('div');
+    row.className = 'aluno-row';
+    row.innerHTML = `
+      <div class="aluno-info">
+        <div class="nm">${a.nome}</div>
+      </div>
+      <div class="toggle-group">
+        <button class="toggle-btn presente ${marcado ? 'on':''}" data-id="${a.id}" data-val="1">Presente</button>
+        <button class="toggle-btn falta ${!marcado ? 'on':''}" data-id="${a.id}" data-val="0">Falta</button>
+      </div>`;
+    container.appendChild(row);
+  });
+
+  if (!lista.length){
+    container.innerHTML = '<div class="empty-state">Nenhum aluno encontrado.</div>';
+  }
+
+  container.querySelectorAll('.toggle-btn').forEach(btn=>{
+    btn.onclick = () => markPresenca(btn.dataset.id, btn.dataset.val === '1');
+  });
+
+  document.getElementById('roll-summary-text').textContent = `Semana ${semanaAtiva} — ${presentes}/${totalAtivos} presentes`;
+  document.getElementById('roll-summary-pct').textContent = totalAtivos ? Math.round(presentes/totalAtivos*100) + '%' : '0%';
+
+  renderSaveBar();
+}
+
+function markPresenca(alunoId, presente){
+  draft[alunoId] = presente;
+  draftDirty = true;
+  renderChamada();
+  // Painel só é atualizado depois de "Salvar encontro" — não chamamos renderPainel() aqui.
+}
+
+function countDraftChanges(){
+  let n = 0;
+  Object.keys(draft).forEach(id=>{
+    const salvo = !!(state.presencas[id] && state.presencas[id][semanaAtiva]);
+    if (draft[id] !== salvo) n++;
+  });
+  return n;
+}
+
+function renderSaveBar(){
+  const bar = document.getElementById('save-bar');
+  const n = countDraftChanges();
+  draftDirty = n > 0;
+  bar.classList.toggle('show', draftDirty);
+  document.getElementById('save-bar-text').textContent =
+    n === 1 ? '1 alteração não salva' : `${n} alterações não salvas`;
+}
+
+async function salvarEncontro(){
+  const marcacoes = {};
+  state.alunos.forEach(a=>{ marcacoes[a.id] = !!draft[a.id]; });
+
+  // Confirma localmente — Painel passa a refletir a partir de agora.
+  state.alunos.forEach(a=>{
+    if (!state.presencas[a.id]) state.presencas[a.id] = {};
+    state.presencas[a.id][semanaAtiva] = !!draft[a.id];
+  });
+  draftDirty = false;
+  renderChamada();
+  renderPainel();
+  toast('Encontro salvo ✓');
+
+  const action = { action:'saveEncontro', semana: semanaAtiva, marcacoes };
+  const r = await sendAction(action);
+  if (!r.ok){
+    queueAction(action);
+    toast('Salvo localmente — sincronizando quando a conexão voltar.');
+  }
+}
+
+function descartarRascunho(){
+  const n = countDraftChanges();
+  if (n === 0) return;
+  const ok = window.confirm(`Descartar ${n === 1 ? '1 alteração' : n + ' alterações'} não salva(s) desta semana?`);
+  if (!ok) return;
+  loadDraftForWeek(semanaAtiva);
+  renderChamada();
+}
+
+document.getElementById('btn-save-encontro').onclick = salvarEncontro;
+document.getElementById('btn-discard').onclick = descartarRascunho;
+
+function renderPainel(){
+  const alunosAtivos = state.alunos.filter(a=>a.ativo!==false);
+  const total = alunosAtivos.length;
+
+  // média geral
+  let somaPct = 0;
+  alunosAtivos.forEach(a => somaPct += pctPresenca(a.id));
+  const mediaGeral = total ? Math.round(somaPct/total) : 0;
+
+  // presentes na última semana com dado
+  let semanaAtualNum = semanaAtiva;
+
+  document.getElementById('stat-grid').innerHTML = `
+    <div class="stat-card accent">
+      <div class="num">${total}</div>
+      <div class="label">Alunos ativos</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">${mediaGeral}%</div>
+      <div class="label">Presença média</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">S${semanaAtualNum}</div>
+      <div class="label">Encontro selecionado</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">${state.totalSemanas}</div>
+      <div class="label">Semanas do curso</div>
+    </div>
+  `;
+
+  // gráfico de barras por semana
+  const chart = document.getElementById('chart-bars');
+  chart.innerHTML = '';
+  for (let s = 1; s <= state.totalSemanas; s++){
+    let count = 0;
+    alunosAtivos.forEach(a=>{ if (state.presencas[a.id] && state.presencas[a.id][s]) count++; });
+    const pct = total ? (count/total*100) : 0;
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    col.innerHTML = `<div class="bar" style="height:${Math.max(pct,2)}%"></div><div class="bar-label">${s}</div>`;
+    chart.appendChild(col);
+  }
+
+  // ranking de baixa frequência
+  const ranked = alunosAtivos.map(a=>({ nome:a.nome, pct: pctPresenca(a.id) })).sort((a,b)=> a.pct - b.pct).slice(0,6);
+  const rankEl = document.getElementById('rank-low');
+  rankEl.innerHTML = '';
+  if (!ranked.length){
+    rankEl.innerHTML = '<div class="empty-state">Sem dados suficientes ainda.</div>';
+  } else {
+    ranked.forEach(r=>{
+      const row = document.createElement('div');
+      row.className = 'rank-row' + (r.pct < 50 ? ' low' : '');
+      row.innerHTML = `
+        <div class="rnm">${r.nome}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${r.pct}%"></div></div>
+        <div class="pct">${r.pct}%</div>`;
+      rankEl.appendChild(row);
+    });
+  }
+
+  // matriz de presença
+  const table = document.getElementById('matrix-table');
+  let thead = '<thead><tr><th class="name-cell">Aluno</th>';
+  for (let s=1; s<=state.totalSemanas; s++) thead += `<th>S${s}</th>`;
+  thead += '</tr></thead>';
+
+  let tbody = '<tbody>';
+  alunosAtivos.sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(a=>{
+    tbody += `<tr><td class="name-cell">${a.nome}</td>`;
+    for (let s=1; s<=state.totalSemanas; s++){
+      const on = !!(state.presencas[a.id] && state.presencas[a.id][s]);
+      tbody += `<td><span class="dot ${on?'on':'off'}"></span></td>`;
+    }
+    tbody += '</tr>';
+  });
+  tbody += '</tbody>';
+  table.innerHTML = thead + tbody;
+}
+
+function renderAlunos(){
+  const termo = document.getElementById('search-alunos').value;
+  const t = termo.toLowerCase().trim();
+  const lista = state.alunos.filter(a=>{
+    if (!t) return true;
+    return (a.nome||'').toLowerCase().includes(t) ||
+           (a.email||'').toLowerCase().includes(t) ||
+           (a.celular||'').toLowerCase().includes(t);
+  }).sort((a,b)=>a.nome.localeCompare(b.nome));
+
+  const container = document.getElementById('lista-alunos');
+  container.innerHTML = '';
+  lista.forEach(a=>{
+    const pct = pctPresenca(a.id);
+    const card = document.createElement('div');
+    card.className = 'aluno-card' + (a.ativo===false ? ' inativo' : '');
+    card.innerHTML = `
+      <div>
+        <div class="nm">${a.nome}</div>
+      </div>
+      <div class="aluno-actions">
+        <span class="badge-pct">${pct}%</span>
+        <button class="link-btn" data-id="${a.id}" data-ativo="${a.ativo!==false}">${a.ativo!==false ? 'Desativar' : 'Ativar'}</button>
+      </div>`;
+    container.appendChild(card);
+  });
+
+  if (!lista.length){
+    container.innerHTML = '<div class="empty-state">Nenhum aluno encontrado.</div>';
+  }
+
+  container.querySelectorAll('.link-btn').forEach(btn=>{
+    btn.onclick = async () => {
+      const ativoAtual = btn.dataset.ativo === 'true';
+      const alunoId = btn.dataset.id;
+      const aluno = state.alunos.find(x=>String(x.id)===String(alunoId));
+      if (aluno) aluno.ativo = !ativoAtual;
+      renderAlunos(); renderChamada(); renderPainel();
+      const r = await sendAction({ action:'setAtivo', alunoId, ativo: !ativoAtual });
+      if (!r.ok) queueAction({ action:'setAtivo', alunoId, ativo: !ativoAtual });
+    };
+  });
+}
+
+// ---------- navegação de abas ----------
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.onclick = () => {
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('screen-' + btn.dataset.tab).classList.add('active');
+  };
+});
+
+// ---------- busca ----------
+document.getElementById('search-chamada').addEventListener('input', renderChamada);
+document.getElementById('search-alunos').addEventListener('input', renderAlunos);
+
+// ---------- setup / settings ----------
+function showSetup(show){
+  document.getElementById('setup-screen').classList.toggle('active', show);
+  document.getElementById('screen-cursos').classList.toggle('active', !show && !cursoAtivo);
+  if (show) document.getElementById('app').style.display = 'none';
+}
+
+document.getElementById('btn-save-api').onclick = () => {
+  const val = document.getElementById('input-api-url').value.trim();
+  if (!val){ toast('Cole a URL do Apps Script.'); return; }
+  API_URL = val;
+  localStorage.setItem(LS_API_URL, val);
+  showSetup(false);
+  fetchCursos();
+};
+
+document.getElementById('btn-settings').onclick = () => {
+  document.getElementById('settings-api-url').value = API_URL;
+  document.getElementById('modal-settings').classList.add('active');
+};
+document.getElementById('btn-close-settings').onclick = () => document.getElementById('modal-settings').classList.remove('active');
+document.getElementById('btn-settings-save').onclick = () => {
+  const val = document.getElementById('settings-api-url').value.trim();
+  if (!val) return;
+  API_URL = val;
+  localStorage.setItem(LS_API_URL, val);
+  document.getElementById('modal-settings').classList.remove('active');
+  if (cursoAtivo) fetchData(); else fetchCursos();
+  toast('URL atualizada.');
+};
+document.getElementById('btn-refresh-data').onclick = () => {
+  if (cursoAtivo) fetchData(); else fetchCursos();
+  flushQueue();
+  toast('Sincronizando...');
+};
+
+// ---------- importar planilha de inscrições ----------
+let alunosParaImportar = [];
+
+function normalizarTexto_(s){
+  return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+
+function detectarColuna_(headers, candidatos){
+  for (const h of headers){
+    const nh = normalizarTexto_(h);
+    if (candidatos.some(c => nh.includes(c))) return h;
+  }
+  return null;
+}
+
+function parseArquivoImportacao_(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Falha ao ler o arquivo'));
+    reader.onload = (ev) => {
+      try {
+        const data = new Uint8Array(ev.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[firstSheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        resolve(rows);
+      } catch (err){ reject(err); }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+document.getElementById('btn-abrir-import').onclick = () => {
+  document.getElementById('import-file-input').value = '';
+  document.getElementById('import-preview').style.display = 'none';
+  document.getElementById('btn-import-confirm').style.display = 'none';
+  alunosParaImportar = [];
+  document.getElementById('modal-import-alunos').classList.add('active');
+};
+document.getElementById('btn-close-import').onclick = () => document.getElementById('modal-import-alunos').classList.remove('active');
+
+document.getElementById('import-file-input').addEventListener('change', async (ev) => {
+  const file = ev.target.files[0];
+  if (!file) return;
+
+  try {
+    const rows = await parseArquivoImportacao_(file);
+    if (!rows.length){ toast('Nenhuma linha encontrada nesse arquivo.'); return; }
+
+    const headers = Object.keys(rows[0]);
+    const nomeKey = detectarColuna_(headers, ['nome']);
+    const emailKey = detectarColuna_(headers, ['mail']);
+    const celKey = detectarColuna_(headers, ['cel', 'fone', 'whats', 'telefone']);
+
+    if (!nomeKey){
+      toast('Não encontrei uma coluna de nome nessa planilha.');
+      return;
+    }
+
+    alunosParaImportar = rows
+      .map(r => ({
+        nome: String(r[nomeKey] || '').trim(),
+        email: emailKey ? String(r[emailKey] || '').trim() : '',
+        celular: celKey ? String(r[celKey] || '').trim() : ''
+      }))
+      .filter(a => a.nome);
+
+    const preview = document.getElementById('import-preview');
+    const list = document.getElementById('import-preview-list');
+    document.getElementById('import-preview-count').textContent = `${alunosParaImportar.length} alunos encontrados`;
+    document.getElementById('import-preview-ignorados').textContent = celKey || emailKey ? '' : '(sem coluna de contato detectada)';
+
+    list.innerHTML = alunosParaImportar.slice(0, 8).map(a => `
+      <div class="aluno-row" style="padding:8px 0;">
+        <div class="aluno-info"><div class="nm">${a.nome}</div></div>
+      </div>
+    `).join('') + (alunosParaImportar.length > 8 ? `<div class="empty-state" style="padding:10px;">e mais ${alunosParaImportar.length - 8}...</div>` : '');
+
+    preview.style.display = 'block';
+    document.getElementById('btn-import-confirm').style.display = alunosParaImportar.length ? 'block' : 'none';
+  } catch (err){
+    toast('Não consegui ler esse arquivo. Verifique se é .xlsx ou .csv válido.');
+  }
+});
+
+document.getElementById('btn-import-confirm').onclick = async () => {
+  if (!alunosParaImportar.length) return;
+  document.getElementById('modal-import-alunos').classList.remove('active');
+  toast(`Importando ${alunosParaImportar.length} alunos...`);
+
+  const r = await sendAction({ action:'importarAlunos', alunos: alunosParaImportar });
+  if (r.ok){
+    state = r.data;
+    renderAll();
+    const res = r.data.importResult || {};
+    toast(`${res.adicionados || 0} alunos importados${res.ignorados ? `, ${res.ignorados} ignorados (duplicados)` : ''} ✓`);
+  } else {
+    toast('Sem conexão — tente importar novamente quando estiver online.');
+  }
+};
+
+// ---------- add aluno ----------
+document.getElementById('btn-close-add-aluno').onclick = () => document.getElementById('modal-add-aluno').classList.remove('active');
+document.getElementById('btn-add-aluno-save').onclick = async () => {
+  const nome = document.getElementById('new-aluno-nome').value.trim();
+  const email = document.getElementById('new-aluno-email').value.trim();
+  const celular = document.getElementById('new-aluno-celular').value.trim();
+  if (!nome){ toast('Informe o nome do aluno.'); return; }
+  document.getElementById('modal-add-aluno').classList.remove('active');
+  document.getElementById('new-aluno-nome').value = '';
+  document.getElementById('new-aluno-email').value = '';
+  document.getElementById('new-aluno-celular').value = '';
+  toast('Adicionando aluno...');
+  const r = await sendAction({ action:'addAluno', nome, email, celular });
+  if (r.ok){ state = r.data; renderAll(); toast('Aluno adicionado ✓'); }
+  else { queueAction({ action:'addAluno', nome, email, celular }); toast('Sem conexão — será adicionado ao sincronizar.'); }
+};
+
+// FAB para adicionar aluno (injetado na tela Alunos)
+const fab = document.createElement('button');
+fab.className = 'fab';
+fab.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
+fab.onclick = () => document.getElementById('modal-add-aluno').classList.add('active');
+document.body.appendChild(fab);
+function toggleFab(){
+  fab.style.display = document.getElementById('screen-alunos').classList.contains('active') ? 'flex' : 'none';
+}
+document.querySelectorAll('.nav-btn').forEach(b=> b.addEventListener('click', toggleFab));
+toggleFab();
+
+// ---------- inicialização ----------
+window.addEventListener('online', ()=>{ setStatus(true); flushQueue(); });
+window.addEventListener('offline', ()=> setStatus(false));
+
+if (API_URL){
+  showSetup(false);
+  fetchCursos();
+  setInterval(flushQueue, 8000);
+} else {
+  showSetup(true);
+}
+
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
